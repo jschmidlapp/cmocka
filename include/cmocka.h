@@ -1427,10 +1427,13 @@ static inline void _unit_test_dummy(void **state) {
  */
 int run_tests(const UnitTest tests[]);
 #else
-#define run_tests(tests) _run_tests(tests, sizeof(tests) / sizeof(tests)[0])
+#define run_tests(tests) _run_tests(tests, sizeof(tests) / sizeof(tests)[0], #tests)
 #endif
 
-#define run_group_tests(tests) _run_group_tests(tests, sizeof(tests) / sizeof(tests)[0])
+#define run_group_tests(tests) _run_group_tests(tests, sizeof(tests) / sizeof(tests)[0], #tests)
+
+#define init_tests() printf("[----------] Global test environment set-up.\n")
+#define end_tests() printf("[----------] Global test environment tear-down\n")
 
 /** @} */
 

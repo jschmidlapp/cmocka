@@ -265,6 +265,12 @@ static const int exception_signals[] = {
     SIGSYS,
 };
 
+#define ERROR_STRING_LENGTH 120
+#define NUM_ERROR_STRINGS     8
+
+static char error_strings[NUM_ERROR_STRINGS][ERROR_STRING_LENGTH];
+static size_t error_string_idx;
+
 /* Default signal functions that should be restored after a test is complete. */
 typedef void (*SignalFunction)(int signal);
 static SignalFunction default_signal_functions[
@@ -1567,12 +1573,12 @@ static int display_allocated_blocks(const ListNode * const check_point) {
         assert_non_null(block_info);
 
         if (!allocated_blocks) {
-            print_error("Blocks allocated...\n");
+            print_message("Blocks allocated...\n");
         }
-        print_error(SOURCE_LOCATION_FORMAT ": note: block %p allocated here\n",
-                    block_info->location.file,
-                    block_info->location.line,
-                    block_info->block);
+        print_message(SOURCE_LOCATION_FORMAT ": note: block %p allocated here\n",
+                      block_info->location.file,
+                      block_info->location.line,
+                      block_info->block);
         allocated_blocks ++;
     }
     return allocated_blocks;
@@ -1610,7 +1616,12 @@ static void fail_if_blocks_allocated(const ListNode * const check_point,
 
 
 void _fail(const char * const file, const int line) {
-  print_error(SOURCE_LOCATION_FORMAT ": error: Failure!\n", file, line);
+        int i;
+
+    print_message(SOURCE_LOCATION_FORMAT ": Failure\n", file, line);
+    for (i=0; i<error_string_idx; i++) {
+        printf("%s", error_strings[i]);
+    }
     exit_test(1);
 }
 
@@ -1676,10 +1687,8 @@ void vprint_message(const char* const format, va_list args) {
 
 
 void vprint_error(const char* const format, va_list args) {
-    char buffer[1024];
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    fprintf(stderr, "%s", buffer);
-    fflush(stderr);
+    vsnprintf(error_strings[error_string_idx++],
+                  sizeof(error_strings[0]), format, args);
 #ifdef _WIN32
     OutputDebugString(buffer);
 #endif /* _WIN32 */
@@ -1823,6 +1832,8 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests,
                                        sizeof(*failed_names));
     void **current_state = NULL;
 
+    error_string_idx = 0;
+
     num_actual_tests = number_of_tests - setups - teardowns;
 
     /* Count setup and teardown functions */
@@ -1880,8 +1891,8 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests,
             current_state = &current_TestState->state;
             break;
         default:
-            print_error("Invalid unit test function type %d\n",
-                        test->function_type);
+            print_message("Invalid unit test function type %d\n",
+                          test->function_type);
             exit_test(1);
             break;
         }
@@ -1934,17 +1945,17 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests,
                                   );
 
     if (total_failed > 0) {
-        print_error("[  FAILED  ] %"PRIdS " test(s), listed below:\n", total_failed);
+        print_message("[  FAILED  ] %"PRIdS " test(s), listed below:\n", total_failed);
         for (i = 0; i < total_failed; i++) {
-            print_error("[  FAILED  ] %s\n", failed_names[i]);
+            print_message("[  FAILED  ] %s\n", failed_names[i]);
         }
     } else {
-        print_error("\n %"PRIdS " FAILED TEST(S)\n", total_failed);
+        print_message("\n %"PRIdS " FAILED TEST(S)\n", total_failed);
     }
 
     if (number_of_test_states != 0) {
-        print_error("[  ERROR   ] Mismatched number of setup %"PRIdS " and "
-                    "teardown %"PRIdS " functions\n", setups, teardowns);
+        print_message("[  ERROR   ] Mismatched number of setup %"PRIdS " and "
+                      "teardown %"PRIdS " functions\n", setups, teardowns);
         total_failed = (size_t)-1;
     }
 
@@ -1988,7 +1999,7 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests,
                 setup_name = test->name;
                 num_setups = 1;
             } else {
-                print_error("[  ERROR   ] More than one group setup function detected\n");
+                print_message("[  ERROR   ] More than one group setup function detected\n");
                 exit_test(1);
             }
         }
@@ -1999,7 +2010,7 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests,
                 teardown_name = test->name;
                 num_teardowns = 1;
             } else {
-                print_error("[  ERROR   ] More than one group teardown function detected\n");
+                print_message("[  ERROR   ] More than one group teardown function detected\n");
                 exit_test(1);
             }
         }
@@ -2049,7 +2060,7 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests,
         case UNIT_TEST_FUNCTION_TYPE_GROUP_TEARDOWN:
             break;
         default:
-            print_error("Invalid unit test function type %d\n",
+            print_message("Invalid unit test function type %d\n",
                         test->function_type);
             break;
         }
@@ -2098,12 +2109,12 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests,
     print_message("[  PASSED  ] %"PRIdS " test(s).\n", tests_executed - total_failed);
 
     if (total_failed) {
-        print_error("[  FAILED  ] %"PRIdS " test(s), listed below:\n", total_failed);
+        print_message("[  FAILED  ] %"PRIdS " test(s), listed below:\n", total_failed);
         for (i = 0; i < total_failed; i++) {
-            print_error("[  FAILED  ] %s\n", failed_names[i]);
+            print_message("[  FAILED  ] %s\n", failed_names[i]);
         }
     } else {
-        print_error("\n %"PRIdS " FAILED TEST(S)\n", total_failed);
+        print_message("\n %"PRIdS " FAILED TEST(S)\n", total_failed);
     }
 
     free((void*)failed_names);
