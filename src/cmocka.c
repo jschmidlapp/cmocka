@@ -1705,6 +1705,7 @@ void print_error(const char* const format, ...) {
 int _run_test(
         const char * const function_name,  const UnitTestFunction Function,
         void ** const volatile state, const UnitTestFunctionType function_type,
+        const char* const testsuite_name,
         const void* const heap_check_point) {
     const ListNode * const volatile check_point = (const ListNode*)
         (heap_check_point ?
@@ -1733,7 +1734,10 @@ int _run_test(
     }
 
     if (function_type == UNIT_TEST_FUNCTION_TYPE_TEST) {
-        print_message("[ RUN      ] %s\n", function_name);
+        print_message("[ RUN      ] %s%s%s\n",
+                      testsuite_name ? testsuite_name : "",
+                      testsuite_name ? "." : "",
+                      function_name);
     }
     initialize_testing(function_name);
     global_running_test = 1;
@@ -1750,12 +1754,18 @@ int _run_test(
         global_running_test = 0;
 
         if (function_type == UNIT_TEST_FUNCTION_TYPE_TEST) {
-            print_message("[       OK ] %s\n", function_name);
+            print_message("[       OK ] %s%s%s (0 ms)\n",
+                          testsuite_name ? testsuite_name : "",
+                          testsuite_name ? "." : "",
+                          function_name);
         }
         rc = 0;
     } else {
         global_running_test = 0;
-        print_message("[  FAILED  ] %s\n", function_name);
+        print_message("[  FAILED  ] %s%s%s (0 ms)\n",
+                      testsuite_name ? testsuite_name : "",
+                      testsuite_name ? "." : "",
+                      function_name);
     }
     teardown_testing(function_name);
 
@@ -1777,7 +1787,8 @@ int _run_test(
 }
 
 
-int _run_tests(const UnitTest * const tests, const size_t number_of_tests) {
+int _run_tests(const UnitTest * const tests, const size_t number_of_tests,
+               const char *testsuite_name) {
     /* Whether to execute the next test. */
     int run_next_test = 1;
     /* Whether the previous test failed. */
@@ -1797,6 +1808,8 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests) {
     /* Number of teardown functions. */
     size_t teardowns = 0;
     size_t i;
+    size_t num_actual_tests;
+
     /*
      * A stack of test states.  A state is pushed on the stack
      * when a test setup occurs and popped on tear down.
@@ -1809,6 +1822,8 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests) {
     const char** failed_names = (const char**)malloc(number_of_tests *
                                        sizeof(*failed_names));
     void **current_state = NULL;
+
+    num_actual_tests = number_of_tests - setups - teardowns;
 
     /* Count setup and teardown functions */
     for (i = 0; i < number_of_tests; i++) {
@@ -1823,8 +1838,12 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests) {
         }
     }
 
-    print_message("[==========] Running %"PRIdS " test(s).\n",
-                  number_of_tests - setups - teardowns);
+    num_actual_tests = number_of_tests - setups - teardowns;
+    print_message("[----------] %"PRIdS " test%s %s%s\n",
+                  num_actual_tests,
+                  num_actual_tests > 1 ? "s" : "",
+                  testsuite_name ? "from " : "",
+                  testsuite_name ? testsuite_name : "");
 
     /* Make sure LargestIntegralType is at least the size of a pointer. */
     assert_true(sizeof(LargestIntegralType) >= sizeof(void*));
@@ -1869,7 +1888,7 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests) {
 
         if (run_next_test) {
             int failed = _run_test(test->name, test->function, current_state,
-                                   test->function_type, test_check_point);
+                                   test->function_type, testsuite_name, test_check_point);
             if (failed) {
                 failed_names[total_failed] = test->name;
             }
@@ -1907,8 +1926,12 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests) {
         }
     }
 
-    print_message("[==========] %"PRIdS " test(s) run.\n", tests_executed);
-    print_error("[  PASSED  ] %"PRIdS " test(s).\n", tests_executed - total_failed);
+    print_message("[----------] %"PRIdS " test%s %s%s (0 ms total)\n",
+                  num_actual_tests,
+                                  num_actual_tests > 1 ? "s" : "",
+                                  testsuite_name ? "from " : "",
+                                  testsuite_name ? testsuite_name : ""
+                                  );
 
     if (total_failed > 0) {
         print_error("[  FAILED  ] %"PRIdS " test(s), listed below:\n", total_failed);
@@ -1932,7 +1955,7 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests) {
     return (int)total_failed;
 }
 
-int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests)
+int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests, const char *testsuite_name)
 {
     UnitTestFunction setup = NULL;
     const char *setup_name;
@@ -1942,6 +1965,7 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests)
     size_t num_teardowns = 0;
     size_t current_test = 0;
     size_t i;
+    size_t num_actual_tests;
 
     /* Number of tests executed. */
     size_t tests_executed = 0;
@@ -1981,8 +2005,12 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests)
         }
     }
 
-    print_message("[==========] Running %"PRIdS " test(s).\n",
-                  number_of_tests - num_setups - num_teardowns);
+    num_actual_tests = number_of_tests - num_setups - num_teardowns;
+    print_message("[----------] %"PRIdS " test%s %s%s\n",
+                  num_actual_tests,
+                  num_actual_tests > 1 ? "s" : "",
+                  testsuite_name ? "from " : "",
+                  testsuite_name ? testsuite_name : "");
 
     if (setup != NULL) {
         int failed;
@@ -1994,6 +2022,7 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests)
                            setup,
                            current_state,
                            UNIT_TEST_FUNCTION_TYPE_SETUP,
+                           testsuite_name,
                            group_state.check_point);
         if (failed) {
             failed_names[total_failed] = setup_name;
@@ -2032,6 +2061,7 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests)
                                test->function,
                                current_state,
                                test->function_type,
+                               testsuite_name,
                                NULL);
             if (failed) {
                 failed_names[total_failed] = test->name;
@@ -2049,6 +2079,7 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests)
                            teardown,
                            current_state,
                            UNIT_TEST_FUNCTION_TYPE_GROUP_TEARDOWN,
+                           testsuite_name,
                            group_state.check_point);
         if (failed) {
             failed_names[total_failed] = teardown_name;
@@ -2058,8 +2089,13 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests)
         tests_executed++;
     }
 
-    print_message("[==========] %"PRIdS " test(s) run.\n", tests_executed);
-    print_error("[  PASSED  ] %"PRIdS " test(s).\n", tests_executed - total_failed);
+    print_message("[----------] %"PRIdS " test%s %s%s (0 ms total)\n",
+                  num_actual_tests,
+                  num_actual_tests > 1 ? "s" : "",
+                  testsuite_name ? "from " : "",
+                  testsuite_name ? testsuite_name : ""
+
+    print_message("[  PASSED  ] %"PRIdS " test(s).\n", tests_executed - total_failed);
 
     if (total_failed) {
         print_error("[  FAILED  ] %"PRIdS " test(s), listed below:\n", total_failed);

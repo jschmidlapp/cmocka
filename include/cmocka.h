@@ -1793,10 +1793,13 @@ void _fail(const char * const file, const int line);
 int _run_test(
     const char * const function_name, const UnitTestFunction Function,
     void ** const volatile state, const UnitTestFunctionType function_type,
+    const char * const testsuite_name,
     const void* const heap_check_point);
-int _run_tests(const UnitTest * const tests, const size_t number_of_tests);
+int _run_tests(const UnitTest * const tests, const size_t number_of_tests,
+               const char *testsuite_name);
 int _run_group_tests(const UnitTest * const tests,
-                     const size_t number_of_tests);
+                     const size_t number_of_tests,
+		      const char *testsuite_name);
 
 /* Standard output and error print methods. */
 void print_message(const char* const format, ...) CMOCKA_PRINTF_ATTRIBUTE(1, 2);
