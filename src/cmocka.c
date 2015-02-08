@@ -2104,7 +2104,7 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests,
                   num_actual_tests,
                   num_actual_tests > 1 ? "s" : "",
                   testsuite_name ? "from " : "",
-                  testsuite_name ? testsuite_name : ""
+                  testsuite_name ? testsuite_name : "");
 
     print_message("[  PASSED  ] %"PRIdS " test(s).\n", tests_executed - total_failed);
 
